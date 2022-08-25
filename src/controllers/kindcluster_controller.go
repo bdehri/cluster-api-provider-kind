@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -35,7 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	infrastructurev1alpha1 "github.com/bdehri/cluster-api-provider-kind/api/v1alpha1"
-	"github.com/bdehri/cluster-api-provider-kind/kind"
+	"github.com/bdehri/cluster-api-provider-kind/src/kind"
 	"github.com/go-logr/logr"
 )
 
@@ -67,6 +68,9 @@ type KindClusterManager struct {
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=kindclusters,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=kindclusters/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=kindclusters/finalizers,verbs=update
+//+kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters;clusters/status,verbs=get;list;watch
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=secrets/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -121,36 +125,43 @@ func (r *KindClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	if !kindCluster.DeletionTimestamp.IsZero() {
-		reconcileDelete(ctx, kindClusterManager)
+		return reconcileDelete(ctx, kindClusterManager)
 	}
 
 	return reconcileNormal(ctx, kindClusterManager)
 }
 func reconcileDelete(ctx context.Context, kindClusterManager KindClusterManager) (ctrl.Result, error) {
-	if controllerutil.ContainsFinalizer(&kindClusterManager.KindCluster, kindClusterFinalizer) {
-		err := kindClusterManager.kindClient.Delete(kindClusterManager.NamespacedName.Name)
-		if err != nil {
+	err := kindClusterManager.kindClient.Delete(kindClusterManager.NamespacedName.Name)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	kindClusterManager.Logger.Info("External kind resource deleted", "cluster", kindClusterManager.NamespacedName)
+	var kubeconfigSecret corev1.Secret
+	err = kindClusterManager.Client.Get(ctx, types.NamespacedName{
+		Name:      fmt.Sprintf("%s-kubeconfig", kindClusterManager.Name),
+		Namespace: kindClusterManager.Namespace,
+	}, &kubeconfigSecret)
+	if client.IgnoreNotFound(err) != nil {
+		kindClusterManager.Logger.Error(err, "cluster", kindClusterManager.NamespacedName)
+		return ctrl.Result{}, err
+	} else if !apierrors.IsNotFound(err) {
+		if err := kindClusterManager.Client.Delete(ctx, &kubeconfigSecret); err != nil {
 			return ctrl.Result{}, err
 		}
-
-		kindClusterManager.Logger.Info("External kind resource deleted", "cluster", kindClusterManager.NamespacedName)
-		var kubeconfigConfigmap corev1.ConfigMap
-		err = kindClusterManager.Client.Get(ctx, kindClusterManager.NamespacedName, &kubeconfigConfigmap)
-		if client.IgnoreNotFound(err) != nil {
-			return ctrl.Result{}, err
-		} else if !apierrors.IsNotFound(err) {
-			if err := kindClusterManager.Client.Delete(ctx, &kubeconfigConfigmap); err != nil {
+		if controllerutil.ContainsFinalizer(&kubeconfigSecret, kindClusterFinalizer) {
+			controllerutil.RemoveFinalizer(&kubeconfigSecret, kindClusterFinalizer)
+			kindClusterManager.Logger.Info("remove finalizer from kubeconfig", "cluster", kindClusterManager.NamespacedName)
+			if err := kindClusterManager.Client.Update(ctx, &kubeconfigSecret); err != nil {
+				kindClusterManager.Logger.Error(err, "could not update kubeconfig secret", "cluster", kindClusterManager.NamespacedName)
 				return ctrl.Result{}, err
 			}
-			if controllerutil.ContainsFinalizer(&kubeconfigConfigmap, kindClusterFinalizer) {
-				controllerutil.RemoveFinalizer(&kubeconfigConfigmap, kindClusterFinalizer)
-				if err := kindClusterManager.Client.Update(ctx, &kubeconfigConfigmap); err != nil {
-					return ctrl.Result{}, err
-				}
-			}
-			kindClusterManager.Logger.Info("KindCluster configmap was deleted", "cluster", kindClusterManager.NamespacedName)
+			kindClusterManager.Logger.Info("removed finalizer from kubeconfig", "cluster", kindClusterManager.NamespacedName)
+
 		}
+		kindClusterManager.Logger.Info("KindCluster secret was deleted", "cluster", kindClusterManager.NamespacedName)
 	}
+
 	controllerutil.RemoveFinalizer(&kindClusterManager.KindCluster, kindClusterFinalizer)
 	if err := kindClusterManager.Update(ctx, &kindClusterManager.KindCluster); err != nil {
 		return ctrl.Result{}, err
@@ -179,10 +190,10 @@ func reconcileNormal(ctx context.Context, kindClusterManager KindClusterManager)
 	kubeconfigSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kindClusterManager.NamespacedName.Namespace,
-			Name:      kindClusterManager.NamespacedName.Name,
+			Name:      fmt.Sprintf("%s-kubeconfig", kindClusterManager.NamespacedName.Name),
 		},
 		Data: map[string][]byte{
-			"kubeconfig": kubeconfig,
+			"value": kubeconfig,
 		},
 	}
 

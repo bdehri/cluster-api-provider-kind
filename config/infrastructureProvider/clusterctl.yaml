@@ -1,5 +1,5 @@
 providers:
   # add a custom provider
   - name: "kind"
-    url: "https://github.com/bdehri/cluster-api-provider/releases/latest/infrastructure-components.yaml"
+    url: "https://github.com/bdehri/cluster-api-provider-kind/releases/latest/infrastructure-components.yaml"
     type: "InfrastructureProvider"

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/bdehri/cluster-api-provider-kind/constants"
+	"github.com/bdehri/cluster-api-provider-kind/src/constants"
 )
 
 const (

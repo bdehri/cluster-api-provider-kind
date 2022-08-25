@@ -125,6 +125,33 @@ metadata:
   name: cluster-api-provider-kind-manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - secrets/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cluster.x-k8s.io
+  resources:
+  - clusters
+  - clusters/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - infrastructure.cluster.x-k8s.io
   resources:
   - kindclusters
@@ -313,7 +340,8 @@ spec:
         - --leader-elect
         command:
         - /manager
-        image: controller:latest
+        image: docker.io/bdehrioglu/cluster-api-kind-controller:v0.1.0
+        imagePullPolicy: Always
         livenessProbe:
           httpGet:
             path: /healthz
@@ -321,6 +349,9 @@ spec:
           initialDelaySeconds: 15
           periodSeconds: 20
         name: manager
+        volumeMounts:
+        - mountPath: /var/run/docker.sock
+          name: docker-socket
         readinessProbe:
           httpGet:
             path: /readyz
@@ -343,3 +374,7 @@ spec:
         runAsNonRoot: true
       serviceAccountName: cluster-api-provider-kind-controller-manager
       terminationGracePeriodSeconds: 10
+      volumes:
+      - name: docker-socket
+        hostPath:
+          path: /tmp/docker.sock

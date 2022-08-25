@@ -12,16 +12,24 @@ RUN go mod download
 # Copy the go source
 COPY main.go main.go
 COPY api/ api/
-COPY controllers/ controllers/
+COPY src/ src/
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager main.go
 
+
+RUN curl -Lo /tmp/kind https://kind.sigs.k8s.io/dl/v0.14.0/kind-linux-amd64
+RUN chmod +x /tmp/kind
+RUN curl https://download.docker.com/linux/static/stable/x86_64/docker-19.03.1.tgz -o /tmp/docker.tar.gz
+RUN tar xzvf /tmp/docker.tar.gz -C /tmp
+
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+FROM alpine:latest
 WORKDIR /
 COPY --from=builder /workspace/manager .
-USER 65532:65532
 
-ENTRYPOINT ["/manager"]
+COPY --from=builder /tmp/kind /usr/local/bin/kind
+COPY --from=builder /tmp/docker /usr/local/bin/
+
+CMD dockerd &  ; /manager

@@ -33,7 +33,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	infrastructurev1alpha1 "github.com/bdehri/cluster-api-provider-kind/api/v1alpha1"
-	"github.com/bdehri/cluster-api-provider-kind/controllers"
+	"github.com/bdehri/cluster-api-provider-kind/src/controllers"
+	"github.com/bdehri/cluster-api-provider-kind/src/kind"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -91,8 +92,9 @@ func main() {
 	}
 
 	if err = (&controllers.KindClusterReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		KindClient: &kind.Client{},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "KindCluster")
 		os.Exit(1)
