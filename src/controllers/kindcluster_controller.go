@@ -35,7 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	infrastructurev1alpha1 "github.com/bdehri/cluster-api-provider-kind/api/v1alpha1"
-	"github.com/bdehri/cluster-api-provider-kind/kind"
+	"github.com/bdehri/cluster-api-provider-kind/src/kind"
 	"github.com/go-logr/logr"
 )
 

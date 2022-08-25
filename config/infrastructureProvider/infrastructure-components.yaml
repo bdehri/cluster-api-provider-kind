@@ -313,7 +313,7 @@ spec:
         - --leader-elect
         command:
         - /manager
-        image: controller:latest
+        image: docker.io/bdehrioglu/cluster-api-kind-controller:v0.1.0
         livenessProbe:
           httpGet:
             path: /healthz
