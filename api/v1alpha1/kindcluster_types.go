@@ -23,19 +23,24 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+type ControlPlaneEndpoint struct {
+	Host string `json:"host,omitempty" yaml:"host,omitempty"`
+	Port int    `json:"port,omitempty" yaml:"port,omitempty"`
+}
+
 // KindClusterSpec defines the desired state of KindCluster
 type KindClusterSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of KindCluster. Edit kindcluster_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	ControlPlaneEndpoint     `json:"controlPlaneEndpoint,omitempty" yaml:"controlPlaneEndpoint,omitempty"`
+	WorkerMachineCount       int    `json:"workerMachineCount,omitempty" yaml:"workerMachineCount,omitempty"`
+	ControlPlaneMachineCount int    `json:"controlPlaneMachineCount,omitempty" yaml:"controlPlaneMachineCount,omitempty"`
+	KubernetesVersion        string `json:"kubernetesVersion,omitempty" yaml:"kubernetesVersion,omitempty"`
 }
 
 // KindClusterStatus defines the observed state of KindCluster
 type KindClusterStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Ready          bool   `json:"ready,omitempty" yaml:"ready,omitempty"`
+	FailureReason  string `json:"failureReason,omitempty" yaml:"failureReason,omitempty"`
+	FailureMessage string `json:"failureMessage,omitempty" yaml:"failureMessage,omitempty"`
 }
 
 //+kubebuilder:object:root=true
