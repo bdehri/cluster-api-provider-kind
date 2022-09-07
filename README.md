@@ -1,8 +1,11 @@
 # cluster-api-provider-kind
-// TODO(user): Add simple overview of use/purpose
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+This project extends cluster-api project to implement a new infrastructure provider called kind provider.
+
+It can be installed with the command below:
+```
+clusterctl init -i kind
+```
 
 ## Getting Started
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
